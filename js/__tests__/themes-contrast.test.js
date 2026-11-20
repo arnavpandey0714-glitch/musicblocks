@@ -16,6 +16,7 @@ const CSS_DIR = path.join(__dirname, "..", "..", "css");
 const tokensCss = fs.readFileSync(path.join(CSS_DIR, "tokens.css"), "utf8");
 const themesCss = fs.readFileSync(path.join(CSS_DIR, "themes.css"), "utf8");
 const playOnlyCss = fs.readFileSync(path.join(CSS_DIR, "play-only-mode.css"), "utf8");
+const activitiesCss = fs.readFileSync(path.join(CSS_DIR, "activities.css"), "utf8");
 
 /**
  * Collects the custom properties declared in one selector block.
@@ -449,4 +450,50 @@ describe("play-only-mode.css colour tokens", () => {
         expect(closeRule).toBeDefined();
         expect(closeRule.body).toContain("display: flex");
     });
+});
+
+describe("activities.css input styling", () => {
+    const activitiesRules = parseRules(activitiesCss);
+
+    it.each(["light", "dark", "highcontrast"])(
+        "keeps runtime input field text readable with high contrast in the %s theme",
+        theme => {
+            const rule = activitiesRules.find(r => r.selector.trim() === "input.input");
+            expect(rule).toBeDefined();
+
+            const tokens = THEMES[theme];
+            const fg = resolveColor(declaration(rule.body, "color"), tokens);
+            const bg = resolveColor(declaration(rule.body, "background-color"), tokens);
+            const caret = resolveColor(declaration(rule.body, "caret-color"), tokens);
+
+            expect(fg).not.toBeNull();
+            expect(bg).not.toBeNull();
+            expect(caret).not.toBeNull();
+
+            // Text contrast must satisfy WCAG AA (>= 4.5:1)
+            expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+            // Caret contrast matches text contrast
+            expect(contrastRatio(caret, bg)).toBeGreaterThanOrEqual(4.5);
+            expect(rule.body).toContain("var(--color-border-primary)");
+        }
+    );
+
+    it.each(["light", "dark", "highcontrast"])(
+        "keeps runtime input field placeholder readable in the %s theme",
+        theme => {
+            const rule = activitiesRules.find(
+                r => r.selector.trim() === "input.input::placeholder"
+            );
+            expect(rule).toBeDefined();
+
+            const inputRule = activitiesRules.find(r => r.selector.trim() === "input.input");
+            const tokens = THEMES[theme];
+            const fg = resolveColor(declaration(rule.body, "color"), tokens);
+            const bg = resolveColor(declaration(inputRule.body, "background-color"), tokens);
+
+            expect(fg).not.toBeNull();
+            expect(bg).not.toBeNull();
+            expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+        }
+    );
 });
